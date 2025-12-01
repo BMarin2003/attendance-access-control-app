@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { View, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Text, RefreshControl } from 'react-native';
-import { ReportService } from '@/src/api/reportService';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ReportService } from '@/src/api/reportService';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 type ReportType = 'ATTENDANCE' | 'ACCESS' | 'SECURITY';
 type FilterType = 'ALL' | 'LATE' | 'DENIED' | 'CRITICAL';
@@ -13,8 +14,9 @@ export default function ReportsScreen() {
     const [filter, setFilter] = useState<FilterType>('ALL');
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+    const colorScheme = useColorScheme();
+    const colors = Colors[colorScheme ?? 'dark'];
 
-    // Función para obtener la fecha local en formato YYYY-MM-DD
     const getLocalDateString = () => {
         const now = new Date();
         const year = now.getFullYear();
@@ -27,18 +29,15 @@ export default function ReportsScreen() {
         setLoading(true);
         setData([]);
 
-        // Usamos hora local para evitar problemas de UTC vs Tu Zona Horaria
         const today = getLocalDateString();
-
         const now = new Date();
-        const endIso = now.toISOString(); // Para endpoints de Access/Security que usan ISO
+        const endIso = now.toISOString();
         const start = new Date();
-        start.setHours(start.getHours() - 24); // Últimas 24h
+        start.setHours(start.getHours() - 24);
         const startIso = start.toISOString();
 
         try {
             if (type === 'ATTENDANCE') {
-                // Trae asistencias de HOY (Hora local)
                 if (filter === 'LATE') {
                     const res = await ReportService.getLateAttendanceByDate(today);
                     setData(res);
@@ -54,7 +53,7 @@ export default function ReportsScreen() {
                     const res = await ReportService.getRecentAccessLogs(startIso, endIso);
                     setData(res);
                 }
-            } else { // SECURITY
+            } else {
                 if (filter === 'CRITICAL') {
                     const res = await ReportService.getCriticalSecurityEvents();
                     setData(res);
@@ -72,40 +71,79 @@ export default function ReportsScreen() {
 
     useEffect(() => { fetchData(); }, [type, filter]);
 
+    const formatTime = (isoString: string) => {
+        if (!isoString) return '';
+        const date = new Date(isoString);
+        return date.toLocaleString('es-PE', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true,
+        });
+    };
+
     const renderItem = ({ item }: { item: any }) => {
         if (type === 'ATTENDANCE') {
             return (
-                <View style={[styles.card, {borderLeftColor: item.isLate ? 'orange':'green', borderLeftWidth:4}]}>
-                    <View style={styles.row}>
-                        <ThemedText type="defaultSemiBold">{item.workerFullName}</ThemedText>
-                        <ThemedText style={{fontSize:12, color:'#666'}}>{item.checkInTime?.split('T')[1]?.substring(0,5)}</ThemedText>
+                <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <View style={styles.cardHeader}>
+                        <View style={[styles.cardIcon, { backgroundColor: '#0a7ea4' }]}>
+                            <ThemedText style={styles.cardIconText}>A</ThemedText>
+                        </View>
+                        <View style={styles.cardHeaderText}>
+                            <ThemedText style={styles.cardType}>Asistencia</ThemedText>
+                            <ThemedText style={styles.cardTitle}>{item.workerFullName}</ThemedText>
+                        </View>
                     </View>
-                    <ThemedText>RFID: <ThemedText style={{fontFamily:'monospace', fontSize:12}}>{item.rfidTag}</ThemedText></ThemedText>
-                    <ThemedText style={{color: item.isLate ? 'red' : 'green', marginTop:4}}>
-                        {item.isLate ? `⚠️ Tarde (+${item.latenessDuration})` : '✅ Puntual'}
-                    </ThemedText>
-                    {item.checkOutTime && (
-                        <ThemedText style={{fontSize:12, color:'#666', marginTop:2}}>Salida: {item.checkOutTime?.split('T')[1]?.substring(0,5)}</ThemedText>
-                    )}
+                    <ThemedText style={styles.cardDate}>{formatTime(item.checkInTime)}</ThemedText>
+                    <View style={[styles.statusBadge, item.isLate ? styles.lateBadge : styles.onTimeBadge]}>
+                        <ThemedText style={styles.statusBadgeText}>
+                            {item.isLate ? `⏱ Tardanza (${item.latenessDuration || 'N/A'})` : '✓ Puntual'}
+                        </ThemedText>
+                    </View>
                 </View>
             );
         } else if (type === 'ACCESS') {
             return (
-                <View style={[styles.card, { borderLeftColor: item.status === 'GRANTED' ? 'green' : 'red', borderLeftWidth: 4 }]}>
-                    <ThemedText type="defaultSemiBold">{item.workerFullName || 'Desconocido'}</ThemedText>
-                    <ThemedText>Estado: <ThemedText style={{fontWeight:'bold'}}>{item.status}</ThemedText></ThemedText>
-                    {item.denialReason && <ThemedText style={{color:'red', fontSize:12}}>{item.denialReason}</ThemedText>}
-                    <ThemedText style={{fontSize:12, color:'#666', marginTop:5}}>{item.accessTime?.replace('T',' ').substring(0,19)}</ThemedText>
+                <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <View style={styles.cardHeader}>
+                        <View style={[styles.cardIcon, { backgroundColor: '#8b5cf6' }]}>
+                            <ThemedText style={styles.cardIconText}>🚪</ThemedText>
+                        </View>
+                        <View style={styles.cardHeaderText}>
+                            <ThemedText style={styles.cardType}>Acceso</ThemedText>
+                            <ThemedText style={styles.cardTitle}>{item.workerFullName || 'Desconocido'}</ThemedText>
+                        </View>
+                    </View>
+                    <ThemedText style={styles.cardDate}>{formatTime(item.accessTime)}</ThemedText>
+                    <View style={[styles.statusBadge, item.status === 'GRANTED' ? styles.grantedBadge : styles.deniedBadge]}>
+                        <ThemedText style={styles.statusBadgeText}>
+                            {item.status === 'GRANTED' ? '✓ Entrada - Puerta Principal' : `✗ ${item.denialReason || 'Denegado'}`}
+                        </ThemedText>
+                    </View>
                 </View>
             );
         } else {
             return (
-                <View style={[styles.card, { backgroundColor: item.severity === 'CRITICAL' ? '#ffebeb' : 'white' }]}>
-                    <ThemedText type="defaultSemiBold" style={{color: item.severity==='CRITICAL'?'red':'black'}}>
-                        [{item.severity}] {item.eventType}
-                    </ThemedText>
-                    <ThemedText>{item.description}</ThemedText>
-                    <ThemedText style={{fontSize: 12, color: '#666', marginTop:5}}>{item.eventTime?.replace('T',' ').substring(0,19)}</ThemedText>
+                <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <View style={styles.cardHeader}>
+                        <View style={[styles.cardIcon, { backgroundColor: item.severity === 'CRITICAL' ? '#ef4444' : '#f59e0b' }]}>
+                            <ThemedText style={styles.cardIconText}>⚠</ThemedText>
+                        </View>
+                        <View style={styles.cardHeaderText}>
+                            <ThemedText style={styles.cardType}>Alerta</ThemedText>
+                            <ThemedText style={styles.cardTitle}>{item.eventType || 'Sistema IoT'}</ThemedText>
+                        </View>
+                    </View>
+                    <ThemedText style={styles.cardDate}>{formatTime(item.eventTime)}</ThemedText>
+                    <View style={[styles.statusBadge, styles.alertBadge]}>
+                        <ThemedText style={styles.statusBadgeText}>
+                            ⚠ {item.description}
+                        </ThemedText>
+                    </View>
                 </View>
             );
         }
@@ -113,63 +151,68 @@ export default function ReportsScreen() {
 
     return (
         <ThemedView style={styles.container}>
-
-            {/* Header con Botón de Recargar */}
-            <View style={styles.header}>
-                <ThemedText type="title">Reportes</ThemedText>
-                <TouchableOpacity onPress={fetchData} style={styles.refreshButton}>
-                    <IconSymbol name="paperplane.fill" size={20} color="white" />
-                    {/* Si tienes un icono de 'refresh' o 'sync' úsalo, si no el paperplane sirve para probar */}
-                </TouchableOpacity>
-            </View>
-
-            {/* Tabs Principales */}
-            <View style={styles.tabs}>
+            <View style={[styles.tabs, { backgroundColor: colors.card }]}>
                 {(['ATTENDANCE', 'ACCESS', 'SECURITY'] as ReportType[]).map((t) => (
-                    <TouchableOpacity key={t} style={[styles.tab, type === t && styles.activeTab]}
-                                      onPress={() => { setType(t); setFilter('ALL'); }}>
-                        <Text style={[styles.tabText, type === t && styles.activeTabText]}>
+                    <TouchableOpacity
+                        key={t}
+                        style={[styles.tab, type === t && styles.activeTab]}
+                        onPress={() => { setType(t); setFilter('ALL'); }}
+                    >
+                        <ThemedText style={[styles.tabText, type === t && styles.activeTabText]}>
                             {t === 'ATTENDANCE' ? 'Asistencia' : t === 'ACCESS' ? 'Accesos' : 'Alertas'}
-                        </Text>
+                        </ThemedText>
                     </TouchableOpacity>
                 ))}
             </View>
 
-            {/* Sub-Filtros */}
             <View style={styles.filters}>
-                <TouchableOpacity onPress={() => setFilter('ALL')} style={[styles.chip, filter === 'ALL' && styles.activeChip]}>
-                    <Text style={{color: filter==='ALL'?'white':'black', fontSize:12}}>Todos</Text>
+                <TouchableOpacity
+                    onPress={() => setFilter('ALL')}
+                    style={[styles.chip, filter === 'ALL' && styles.activeChip, { borderColor: colors.border }]}
+                >
+                    <ThemedText style={[styles.chipText, filter === 'ALL' && styles.activeChipText]}>Todos</ThemedText>
                 </TouchableOpacity>
 
                 {type === 'ATTENDANCE' && (
-                    <TouchableOpacity onPress={() => setFilter('LATE')} style={[styles.chip, filter === 'LATE' && styles.activeChip]}>
-                        <Text style={{color: filter==='LATE'?'white':'black', fontSize:12}}>Tardanzas</Text>
+                    <TouchableOpacity
+                        onPress={() => setFilter('LATE')}
+                        style={[styles.chip, filter === 'LATE' && styles.activeChip, { borderColor: colors.border }]}
+                    >
+                        <ThemedText style={[styles.chipText, filter === 'LATE' && styles.activeChipText]}>Tardanzas</ThemedText>
                     </TouchableOpacity>
                 )}
                 {type === 'ACCESS' && (
-                    <TouchableOpacity onPress={() => setFilter('DENIED')} style={[styles.chip, filter === 'DENIED' && styles.activeChip]}>
-                        <Text style={{color: filter==='DENIED'?'white':'black', fontSize:12}}>Denegados</Text>
+                    <TouchableOpacity
+                        onPress={() => setFilter('DENIED')}
+                        style={[styles.chip, filter === 'DENIED' && styles.activeChip, { borderColor: colors.border }]}
+                    >
+                        <ThemedText style={[styles.chipText, filter === 'DENIED' && styles.activeChipText]}>Denegados</ThemedText>
                     </TouchableOpacity>
                 )}
                 {type === 'SECURITY' && (
-                    <TouchableOpacity onPress={() => setFilter('CRITICAL')} style={[styles.chip, filter === 'CRITICAL' && styles.activeChip]}>
-                        <Text style={{color: filter==='CRITICAL'?'white':'black', fontSize:12}}>Críticos</Text>
+                    <TouchableOpacity
+                        onPress={() => setFilter('CRITICAL')}
+                        style={[styles.chip, filter === 'CRITICAL' && styles.activeChip, { borderColor: colors.border }]}
+                    >
+                        <ThemedText style={[styles.chipText, filter === 'CRITICAL' && styles.activeChipText]}>Críticos</ThemedText>
                     </TouchableOpacity>
                 )}
             </View>
 
-            {/* Lista */}
-            {loading ? <ActivityIndicator style={{marginTop: 50}} size="large" color="#0a7ea4" /> : (
+            {loading ? (
+                <ActivityIndicator style={styles.loader} size="large" color="#0a7ea4" />
+            ) : (
                 <FlatList
                     data={data}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={renderItem}
-                    contentContainerStyle={{ paddingBottom: 20 }}
-                    refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchData} />}
+                    contentContainerStyle={styles.listContent}
+                    refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchData} tintColor={colors.text} />}
+                    showsVerticalScrollIndicator={false}
                     ListEmptyComponent={
-                        <View style={{marginTop: 50, alignItems:'center'}}>
-                            <ThemedText style={{color:'#999'}}>No se encontraron registros para hoy.</ThemedText>
-                            <ThemedText style={{fontSize:12, color:'#ccc'}}>(Fecha: {getLocalDateString()})</ThemedText>
+                        <View style={styles.emptyContainer}>
+                            <ThemedText style={styles.emptyText}>No se encontraron registros para hoy.</ThemedText>
+                            <ThemedText style={styles.emptyDate}>(Fecha: {getLocalDateString()})</ThemedText>
                         </View>
                     }
                 />
@@ -179,17 +222,138 @@ export default function ReportsScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 15 },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, marginTop: 10 },
-    refreshButton: { backgroundColor: '#0a7ea4', padding: 8, borderRadius: 20 },
-    tabs: { flexDirection: 'row', marginBottom: 10, backgroundColor: '#eee', borderRadius: 8, padding: 2 },
-    tab: { flex: 1, padding: 10, alignItems: 'center', borderRadius: 6 },
-    activeTab: { backgroundColor: 'white', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2 },
-    tabText: { fontWeight: '600', color: '#666', fontSize:12 },
-    activeTabText: { color: '#0a7ea4' },
-    filters: { flexDirection: 'row', gap: 10, marginBottom: 15 },
-    chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: '#e0e0e0' },
-    activeChip: { backgroundColor: '#0a7ea4' },
-    card: { backgroundColor: 'white', padding: 15, borderRadius: 10, marginBottom: 10, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2 },
-    row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }
+    container: {
+        flex: 1,
+        paddingHorizontal: 20,
+        paddingTop: 16,
+    },
+    tabs: {
+        flexDirection: 'row',
+        borderRadius: 12,
+        padding: 4,
+        marginBottom: 16,
+    },
+    tab: {
+        flex: 1,
+        paddingVertical: 12,
+        alignItems: 'center',
+        borderRadius: 10,
+    },
+    activeTab: {
+        backgroundColor: '#0a7ea4',
+    },
+    tabText: {
+        fontWeight: '600',
+        fontSize: 14,
+        color: '#888',
+    },
+    activeTabText: {
+        color: 'white',
+    },
+    filters: {
+        flexDirection: 'row',
+        gap: 10,
+        marginBottom: 20,
+    },
+    chip: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1,
+    },
+    activeChip: {
+        backgroundColor: '#0a7ea4',
+        borderColor: '#0a7ea4',
+    },
+    chipText: {
+        fontSize: 14,
+        color: '#888',
+    },
+    activeChipText: {
+        color: 'white',
+    },
+    loader: {
+        marginTop: 50,
+    },
+    listContent: {
+        paddingBottom: 30,
+    },
+    card: {
+        padding: 16,
+        borderRadius: 16,
+        marginBottom: 12,
+        borderWidth: 1,
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    cardIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    cardIconText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    cardHeaderText: {
+        flex: 1,
+    },
+    cardType: {
+        fontSize: 12,
+        color: '#888',
+        marginBottom: 2,
+    },
+    cardTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    cardDate: {
+        fontSize: 13,
+        color: '#888',
+        marginBottom: 10,
+    },
+    statusBadge: {
+        alignSelf: 'flex-start',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+    },
+    onTimeBadge: {
+        backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    },
+    lateBadge: {
+        backgroundColor: 'rgba(249, 115, 22, 0.15)',
+    },
+    grantedBadge: {
+        backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    },
+    deniedBadge: {
+        backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    },
+    alertBadge: {
+        backgroundColor: 'rgba(249, 115, 22, 0.15)',
+    },
+    statusBadgeText: {
+        fontSize: 13,
+    },
+    emptyContainer: {
+        marginTop: 60,
+        alignItems: 'center',
+    },
+    emptyText: {
+        color: '#888',
+        fontSize: 16,
+    },
+    emptyDate: {
+        fontSize: 12,
+        color: '#666',
+        marginTop: 4,
+    },
 });
