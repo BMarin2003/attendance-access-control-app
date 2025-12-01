@@ -2,6 +2,7 @@ import { apiClient } from './apiClient';
 import { Worker, CreateWorkerRequest, UpdateWorkerRequest } from '../types/worker';
 
 export const WorkerService = {
+    // --- CRUD Básico ---
     getAll: async () => {
         const response = await apiClient.get<any>('/workers');
         return response.data.data as Worker[];
@@ -13,6 +14,7 @@ export const WorkerService = {
     },
 
     create: async (data: CreateWorkerRequest) => {
+        // Este endpoint inicia la espera síncrona de la huella (hasta 40s)
         const response = await apiClient.post<any>('/workers', data);
         return response.data.data as Worker;
     },
@@ -53,7 +55,7 @@ export const WorkerService = {
         return response.data.data as Worker;
     },
 
-    // --- RFID ---
+    // --- Gestión de RFID ---
     getUnassignedTags: async () => {
         const response = await apiClient.get<any>('/workers/rfid/unassigned');
         return response.data.data as string[];
@@ -64,8 +66,9 @@ export const WorkerService = {
         return response.data.data as Worker;
     },
 
+    // ESTE ES EL MÉTODO QUE FALTABA O SE PERDIÓ
     removeRfid: async (workerId: number, rfidTag: string) => {
-        // Nota: Axios delete con body o params a veces es tricky, usaremos params como tu controller espera
+        // Se envía como query param: DELETE /workers/{id}/rfid-tags?rfidTag=XY
         const response = await apiClient.delete<any>(`/workers/${workerId}/rfid-tags`, {
             params: { rfidTag }
         });
