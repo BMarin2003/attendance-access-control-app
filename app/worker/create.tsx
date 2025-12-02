@@ -13,6 +13,7 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, Switch, TextInput, To
 const NAME_REGEX = /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]{2,50}$/;
 const DNI_REGEX = /^[0-9]{8}$/;
 const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+const PHONE_REGEX = /^[0-9]{9}$/;
 
 // Helpers de validación
 const sanitizeText = (text: string | undefined) => {
@@ -45,6 +46,13 @@ const validateEmail = (value: string | undefined) => {
     return true;
 };
 
+const validatePhone = (value: string | undefined) => {
+    if (!value || value.length === 0) return true; // Campo opcional
+    if (value.includes(' ')) return 'No se permiten espacios';
+    if (!PHONE_REGEX.test(value)) return 'Debe tener exactamente 9 dígitos';
+    return true;
+};
+
 export default function CreateWorkerScreen() {
     const { control, handleSubmit, formState: { errors, isValid }, watch } = useForm<CreateWorkerRequest>({
         mode: 'onChange', // Validación en tiempo real
@@ -53,6 +61,7 @@ export default function CreateWorkerScreen() {
             lastName: '',
             documentNumber: '',
             email: '',
+            phoneNumber: '',
             hasRestrictedAreaAccess: false,
         }
     });
@@ -69,6 +78,7 @@ export default function CreateWorkerScreen() {
             lastName: sanitizeText(data.lastName),
             email: data.email?.toLowerCase().trim() || '',
             documentNumber: data.documentNumber.trim(),
+            phoneNumber: data.phoneNumber?.trim() || undefined,
         };
 
         setIsSubmitting(true);
@@ -191,6 +201,28 @@ export default function CreateWorkerScreen() {
                         name="email"
                     />
                     {errors.email && <ThemedText style={styles.errorText}>{getErrorMessage('email')}</ThemedText>}
+
+                    <ThemedText style={styles.label}>Teléfono</ThemedText>
+                    <Controller
+                        control={control}
+                        rules={{ validate: validatePhone }}
+                        render={({ field: { onChange, value } }) => (
+                            <TextInput
+                                style={[
+                                    styles.input, 
+                                    { backgroundColor: colors.inputBg, borderColor: errors.phoneNumber ? '#ef4444' : colors.inputBorder, color: colors.text }
+                                ]}
+                                onChangeText={(text) => onChange(text.replace(/[^0-9]/g, ''))}
+                                value={value}
+                                placeholder="9 dígitos"
+                                placeholderTextColor="#888"
+                                keyboardType="phone-pad"
+                                maxLength={9}
+                            />
+                        )}
+                        name="phoneNumber"
+                    />
+                    {errors.phoneNumber && <ThemedText style={styles.errorText}>{getErrorMessage('phoneNumber')}</ThemedText>}
 
                     <View style={[styles.switchContainer, { backgroundColor: colors.card }]}>
                         <ThemedText style={styles.switchLabel}>Habilitar Registro Biométrico</ThemedText>
