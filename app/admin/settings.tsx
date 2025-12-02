@@ -17,13 +17,16 @@ export default function SettingsScreen() {
     const loadConfig = async () => {
         try {
             const config = await ConfigService.get();
-            setValue('workStartTime', config.workStartTime);
-            setValue('workEndTime', config.workEndTime);
-            setValue('lateThresholdMinutes', config.lateThresholdMinutes as any);
-            setValue('simulationMode', config.simulationMode);
-            if (config.simulatedDateTime) setValue('simulatedDateTime', config.simulatedDateTime);
+            if (config) {
+                setValue('workStartTime', config.workStartTime);
+                setValue('workEndTime', config.workEndTime);
+                setValue('lateThresholdMinutes', config.lateThresholdMinutes as any);
+                setValue('simulationMode', config.simulationMode);
+                if (config.simulatedDateTime) setValue('simulatedDateTime', config.simulatedDateTime);
+            }
         } catch (e) {
-            Alert.alert("Error", "No se pudo cargar la configuración");
+            // Si falla la carga (404), no mostramos alerta bloqueante, permitimos que el usuario inicialice
+            console.log("Config not found, waiting for initialization.");
         } finally {
             setLoading(false);
         }
@@ -48,7 +51,33 @@ export default function SettingsScreen() {
 
             Alert.alert("Éxito", "Configuración actualizada");
             loadConfig();
-        } catch (e) { Alert.alert("Error", "Fallo al guardar"); }
+        } catch (e) { Alert.alert("Error", "Fallo al guardar. ¿El sistema está inicializado?"); }
+    };
+
+    // --- NUEVA FUNCIÓN DE INICIALIZACIÓN ---
+    const handleInitialize = () => {
+        Alert.alert(
+            "Inicializar Sistema",
+            "Esto cargará la configuración por defecto (Horario 08:00 - 17:00). Úsalo si es la primera vez que inicias el sistema.",
+            [
+                { text: "Cancelar", style: "cancel" },
+                {
+                    text: "INICIALIZAR",
+                    onPress: async () => {
+                        try {
+                            setLoading(true);
+                            await ConfigService.initialize();
+                            Alert.alert("Listo", "Sistema inicializado correctamente.");
+                            await loadConfig(); // Recargar para mostrar los nuevos valores
+                        } catch(e) {
+                            Alert.alert("Error", "No se pudo conectar con el servidor.");
+                        } finally {
+                            setLoading(false);
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     const handleDiagnose = async () => {
@@ -138,6 +167,16 @@ export default function SettingsScreen() {
                         <ThemedText style={styles.saveButtonText}>GUARDAR TODO</ThemedText>
                     </TouchableOpacity>
                 </View>
+
+                {/* --- NUEVA SECCIÓN DE INICIALIZACIÓN --- */}
+                <View style={styles.section}>
+                    <ThemedText style={styles.sectionTitle}>Acciones Rápidas</ThemedText>
+
+                    <TouchableOpacity style={[styles.maintenanceButton, { backgroundColor: '#2563eb' }]} onPress={handleInitialize}>
+                        <ThemedText style={styles.maintenanceButtonText}>INICIALIZAR / RESETEAR DEFAULTS</ThemedText>
+                    </TouchableOpacity>
+                </View>
+                {/* ---------------------------------------- */}
 
                 <View style={styles.section}>
                     <ThemedText style={styles.sectionTitle}>Mantenimiento</ThemedText>
