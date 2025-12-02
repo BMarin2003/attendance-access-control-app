@@ -5,8 +5,8 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { WorkerService } from '@/src/api/workerService';
 import { Worker } from '@/src/types/worker';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 export default function WorkerListScreen() {
@@ -29,9 +29,11 @@ export default function WorkerListScreen() {
     }
   };
 
-  useEffect(() => {
-    fetchWorkers();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchWorkers();
+    }, [])
+  );
 
   const renderItem = ({ item }: { item: Worker }) => (
     <TouchableOpacity
