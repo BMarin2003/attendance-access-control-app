@@ -16,14 +16,22 @@ export const Colors = {
     icon: '#687076',
     tabIconDefault: '#687076',
     tabIconSelected: tintColorLight,
+    card: '#f5f5f5',
+    border: '#e0e0e0',
+    inputBg: '#fff',
+    inputBorder: '#ddd',
   },
   dark: {
     text: '#ECEDEE',
-    background: '#151718',
+    background: '#1a1a1a',
     tint: tintColorDark,
     icon: '#9BA1A6',
     tabIconDefault: '#9BA1A6',
     tabIconSelected: tintColorDark,
+    card: '#2a2a2a',
+    border: '#3a3a3a',
+    inputBg: '#2a2a2a',
+    inputBorder: '#3a3a3a',
   },
 };
 

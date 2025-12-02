@@ -1,16 +1,19 @@
-import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, Button, Alert, ActivityIndicator, View, Switch } from 'react-native';
-import { useForm, Controller } from 'react-hook-form';
-import { ConfigService } from '@/src/api/configService';
-import { UpdateConfigRequest } from '@/src/types/config';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ConfigService } from '@/src/api/configService';
+import { UpdateConfigRequest } from '@/src/types/config';
+import React, { useEffect, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function SettingsScreen() {
     const { control, handleSubmit, setValue, watch } = useForm<UpdateConfigRequest & { simulationMode: boolean, simulatedDateTime: string }>();
     const [loading, setLoading] = useState(true);
+    const colorScheme = useColorScheme();
+    const colors = Colors[colorScheme ?? 'dark'];
 
-    // Cargar configuración
     const loadConfig = async () => {
         try {
             const config = await ConfigService.get();
@@ -30,14 +33,12 @@ export default function SettingsScreen() {
 
     const onSave = async (data: any) => {
         try {
-            // 1. Guardar config normal
             await ConfigService.update({
                 workStartTime: data.workStartTime,
                 workEndTime: data.workEndTime,
                 lateThresholdMinutes: parseInt(data.lateThresholdMinutes)
             });
 
-            // 2. Manejar Simulación
             if (data.simulationMode) {
                 const simTime = data.simulatedDateTime || new Date().toISOString().split('.')[0];
                 await ConfigService.enableSimulation(simTime);
@@ -46,7 +47,7 @@ export default function SettingsScreen() {
             }
 
             Alert.alert("Éxito", "Configuración actualizada");
-            loadConfig(); // Recargar para confirmar estado
+            loadConfig();
         } catch (e) { Alert.alert("Error", "Fallo al guardar"); }
     };
 
@@ -71,65 +72,154 @@ export default function SettingsScreen() {
 
     return (
         <ThemedView style={styles.container}>
-            <ScrollView>
-                <ThemedText type="title" style={styles.header}>Sistema</ThemedText>
+            <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={styles.section}>
+                    <ThemedText style={styles.sectionTitle}>Sistema</ThemedText>
 
-                {/* Horarios */}
-                <ThemedText style={styles.label}>Hora Entrada (HH:mm:ss)</ThemedText>
-                <Controller control={control} name="workStartTime" render={({field:{onChange,value}})=>(
-                    <TextInput style={styles.input} value={value} onChangeText={onChange} />
-                )} />
+                    <ThemedText style={styles.label}>Hora Entrada (HH:mm:ss)</ThemedText>
+                    <Controller control={control} name="workStartTime" render={({field:{onChange,value}})=>(
+                        <TextInput
+                            style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
+                            value={value}
+                            onChangeText={onChange}
+                            placeholderTextColor="#888"
+                        />
+                    )} />
 
-                <ThemedText style={styles.label}>Hora Salida (HH:mm:ss)</ThemedText>
-                <Controller control={control} name="workEndTime" render={({field:{onChange,value}})=>(
-                    <TextInput style={styles.input} value={value} onChangeText={onChange} />
-                )} />
+                    <ThemedText style={styles.label}>Hora Salida (HH:mm:ss)</ThemedText>
+                    <Controller control={control} name="workEndTime" render={({field:{onChange,value}})=>(
+                        <TextInput
+                            style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
+                            value={value}
+                            onChangeText={onChange}
+                            placeholderTextColor="#888"
+                        />
+                    )} />
 
-                <ThemedText style={styles.label}>Tolerancia (min)</ThemedText>
-                <Controller control={control} name="lateThresholdMinutes" render={({field:{onChange,value}})=>(
-                    <TextInput style={styles.input} value={value?.toString()} onChangeText={onChange} keyboardType="numeric" />
-                )} />
+                    <ThemedText style={styles.label}>Tolerancia (min)</ThemedText>
+                    <Controller control={control} name="lateThresholdMinutes" render={({field:{onChange,value}})=>(
+                        <TextInput
+                            style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
+                            value={value?.toString()}
+                            onChangeText={onChange}
+                            keyboardType="numeric"
+                            placeholderTextColor="#888"
+                        />
+                    )} />
 
-                {/* Simulación */}
-                <View style={styles.box}>
-                    <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center'}}>
-                        <ThemedText type="defaultSemiBold">Modo Simulación</ThemedText>
+                    <View style={[styles.switchRow, { backgroundColor: colors.card }]}>
+                        <ThemedText style={styles.switchLabel}>Modo Simulación</ThemedText>
                         <Controller control={control} name="simulationMode" render={({field:{onChange,value}})=>(
-                            <Switch value={value} onValueChange={onChange} />
+                            <Switch
+                                value={value}
+                                onValueChange={onChange}
+                                trackColor={{ false: '#3a3a3a', true: '#0a7ea4' }}
+                                thumbColor={value ? '#fff' : '#888'}
+                            />
                         )} />
                     </View>
+
                     {watch('simulationMode') && (
                         <>
-                            <ThemedText style={{fontSize:12, marginTop:5}}>Fecha/Hora Simulada (ISO-8601)</ThemedText>
+                            <ThemedText style={styles.label}>Fecha/Hora Simulada (ISO-8601)</ThemedText>
                             <Controller control={control} name="simulatedDateTime" render={({field:{onChange,value}})=>(
-                                <TextInput style={styles.input} value={value} onChangeText={onChange} placeholder="2025-10-31T08:15:00" />
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
+                                    value={value}
+                                    onChangeText={onChange}
+                                    placeholder="2025-10-31T08:15:00"
+                                    placeholderTextColor="#888"
+                                />
                             )} />
                         </>
                     )}
+
+                    <TouchableOpacity style={styles.saveButton} onPress={handleSubmit(onSave)}>
+                        <ThemedText style={styles.saveButtonText}>GUARDAR TODO</ThemedText>
+                    </TouchableOpacity>
                 </View>
 
-                <Button title="Guardar Todo" onPress={handleSubmit(onSave)} color="#0a7ea4" />
+                <View style={styles.section}>
+                    <ThemedText style={styles.sectionTitle}>Mantenimiento</ThemedText>
 
-                <View style={styles.divider} />
+                    <TouchableOpacity style={[styles.maintenanceButton, { backgroundColor: '#8b5cf6' }]} onPress={handleDiagnose}>
+                        <ThemedText style={styles.maintenanceButtonText}>DIAGNÓSTICO FIREBASE</ThemedText>
+                    </TouchableOpacity>
 
-                {/* Mantenimiento */}
-                <ThemedText type="subtitle" style={{marginBottom: 10}}>Mantenimiento</ThemedText>
-                <View style={{gap: 10}}>
-                    <Button title="Diagnóstico Firebase" onPress={handleDiagnose} color="purple" />
-                    <Button title="Limpiar Comandos" onPress={() => ConfigService.clearCommand()} color="orange" />
-                    <Button title="FORMATEAR SENSOR" onPress={handleFormat} color="red" />
+                    <TouchableOpacity style={[styles.maintenanceButton, { backgroundColor: '#f97316' }]} onPress={() => ConfigService.clearCommand()}>
+                        <ThemedText style={styles.maintenanceButtonText}>LIMPIAR COMANDOS</ThemedText>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={[styles.maintenanceButton, { backgroundColor: '#ef4444' }]} onPress={handleFormat}>
+                        <ThemedText style={styles.maintenanceButtonText}>FORMATEAR SENSOR</ThemedText>
+                    </TouchableOpacity>
                 </View>
-
             </ScrollView>
         </ThemedView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20 },
-    header: { marginVertical: 20 },
-    label: { marginBottom: 5, fontWeight: '600' },
-    input: { backgroundColor: 'white', padding: 10, borderRadius: 5, marginBottom: 15, borderWidth: 1, borderColor: '#ddd' },
-    box: { backgroundColor: '#f0f0f0', padding: 15, borderRadius: 8, marginBottom: 20 },
-    divider: { height: 1, backgroundColor: '#ccc', marginVertical: 30 }
+    container: {
+        flex: 1,
+        paddingHorizontal: 20,
+        paddingTop: 8,
+    },
+    section: {
+        marginBottom: 24,
+    },
+    sectionTitle: {
+        fontSize: 13,
+        color: '#888',
+        fontWeight: '600',
+        marginBottom: 12,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+    },
+    label: {
+        fontSize: 13,
+        color: '#888',
+        marginBottom: 6,
+    },
+    input: {
+        borderWidth: 1,
+        borderRadius: 12,
+        padding: 14,
+        fontSize: 15,
+        marginBottom: 12,
+    },
+    switchRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 14,
+        borderRadius: 12,
+        marginBottom: 12,
+    },
+    switchLabel: {
+        fontSize: 15,
+    },
+    saveButton: {
+        backgroundColor: '#22c55e',
+        paddingVertical: 14,
+        borderRadius: 12,
+        alignItems: 'center',
+        marginTop: 4,
+    },
+    saveButtonText: {
+        color: 'white',
+        fontWeight: '700',
+        fontSize: 15,
+    },
+    maintenanceButton: {
+        paddingVertical: 14,
+        borderRadius: 12,
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    maintenanceButtonText: {
+        color: 'white',
+        fontWeight: '700',
+        fontSize: 14,
+    },
 });

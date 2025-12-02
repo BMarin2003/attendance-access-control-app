@@ -1,69 +1,114 @@
-// app/(tabs)/explore.tsx
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useRouter } from 'expo-router';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 export default function AdminScreen() {
     const router = useRouter();
+    const colorScheme = useColorScheme();
+    const colors = Colors[colorScheme ?? 'dark'];
 
-    const MenuOption = ({ title, icon, route, color = '#0a7ea4' }: any) => (
-        <TouchableOpacity style={styles.option} onPress={() => router.push(route)}>
-            <View style={[styles.iconContainer, { backgroundColor: color + '20' }]}>
-                <IconSymbol name={icon} size={28} color={color} />
+    const MenuOption = ({ title, subtitle, icon, route, iconBgColor = '#0a7ea4' }: {
+        title: string;
+        subtitle?: string;
+        icon: string;
+        route: string;
+        iconBgColor?: string;
+    }) => (
+        <TouchableOpacity
+            style={[styles.option, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => router.push(route as any)}
+        >
+            <View style={[styles.iconContainer, { backgroundColor: iconBgColor }]}>
+                <IconSymbol name={icon as any} size={24} color="white" />
             </View>
             <View style={styles.textContainer}>
-                <ThemedText type="defaultSemiBold">{title}</ThemedText>
+                <ThemedText style={styles.optionTitle}>{title}</ThemedText>
+                {subtitle && <ThemedText style={styles.optionSubtitle}>{subtitle}</ThemedText>}
             </View>
-            <IconSymbol name="chevron.right" size={20} color="#ccc" />
+            <IconSymbol name="chevron.right" size={20} color={colors.icon} />
         </TouchableOpacity>
     );
 
     return (
-        <ParallaxScrollView
-            headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-            headerImage={
-                <IconSymbol
-                    size={310}
-                    color="#808080"
-                    name="chevron.left.forwardslash.chevron.right"
-                    style={styles.headerImage}
-                />
-            }>
-            <ThemedView style={styles.titleContainer}>
-                <ThemedText type="title">Administración</ThemedText>
-            </ThemedView>
+        <ThemedView style={styles.container}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={styles.header}>
+                    <ThemedText type="title" style={styles.headerTitle}>Administración</ThemedText>
+                    <ThemedText style={styles.headerSubtitle}>Gestión y monitoreo del sistema.</ThemedText>
+                </View>
 
-            <ThemedText style={{marginBottom: 20}}>Gestión y monitoreo del sistema.</ThemedText>
+                <View style={styles.menuContainer}>
+                    <MenuOption
+                        title="Reportes y Logs"
+                        subtitle="Ver historial de asistencia y accesos"
+                        icon="house.fill"
+                        route="/admin/reports"
+                        iconBgColor="#0a7ea4"
+                    />
 
-            <MenuOption
-                title="Reportes y Logs"
-                icon="paperplane.fill" // Ojo: asegúrate de mapear iconos útiles en icon-symbol
-                route="/admin/reports"
-            />
-
-            <MenuOption
-                title="Configuración del Sistema"
-                icon="gear" // Mapear 'gear' a 'settings' en icon-symbol
-                route="/admin/settings"
-                color="#f5a623"
-            />
-
-        </ParallaxScrollView>
+                    <MenuOption
+                        title="Configuración del Sistema"
+                        subtitle="Horarios, tolerancia y mantenimiento"
+                        icon="gear"
+                        route="/admin/settings"
+                        iconBgColor="#6b7280"
+                    />
+                </View>
+            </ScrollView>
+        </ThemedView>
     );
 }
 
 const styles = StyleSheet.create({
-    headerImage: { color: '#808080', bottom: -90, left: -35, position: 'absolute' },
-    titleContainer: { flexDirection: 'row', gap: 8 },
-    option: {
-        flexDirection: 'row', alignItems: 'center', padding: 15,
-        backgroundColor: '#fff', borderRadius: 12, marginBottom: 15,
-        borderWidth: 1, borderColor: '#eee',
-        shadowColor: "#000", shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.05, elevation: 1
+    container: {
+        flex: 1,
+        paddingHorizontal: 20,
     },
-    iconContainer: { padding: 10, borderRadius: 10, marginRight: 15 },
-    textContainer: { flex: 1 }
+    header: {
+        paddingTop: 80,
+        paddingBottom: 40,
+    },
+    headerTitle: {
+        fontSize: 32,
+        fontWeight: 'bold',
+        marginBottom: 8,
+    },
+    headerSubtitle: {
+        fontSize: 16,
+        color: '#888',
+    },
+    menuContainer: {
+        gap: 16,
+    },
+    option: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 20,
+        borderRadius: 16,
+        borderWidth: 1,
+    },
+    iconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 16,
+    },
+    textContainer: {
+        flex: 1,
+    },
+    optionTitle: {
+        fontSize: 17,
+        fontWeight: '600',
+        marginBottom: 4,
+    },
+    optionSubtitle: {
+        fontSize: 14,
+        color: '#888',
+    },
 });
