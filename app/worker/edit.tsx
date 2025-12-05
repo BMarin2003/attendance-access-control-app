@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, TextInput, StyleSheet, Button, ScrollView, ActivityIndicator, Alert, Switch } from 'react-native';
+import { View, TextInput, StyleSheet, Button, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { WorkerService } from '@/src/api/workerService';
@@ -22,7 +22,6 @@ export default function EditWorkerScreen() {
                 setValue('lastName', worker.lastName);
                 setValue('email', worker.email || '');
                 setValue('phoneNumber', worker.phoneNumber || '');
-                setValue('hasRestrictedAreaAccess', worker.hasRestrictedAreaAccess);
             } catch (error) {
                 Alert.alert("Error", "No se pudo cargar la información del trabajador");
                 router.back();
@@ -96,21 +95,6 @@ export default function EditWorkerScreen() {
                 />
                 {errors.phoneNumber && <TextError text="Teléfono inválido (9 dígitos)" />}
 
-                <View style={styles.switchContainer}>
-                    <ThemedText>Acceso a Áreas Restringidas</ThemedText>
-                    <Controller
-                        control={control}
-                        render={({ field: { onChange, value } }) => (
-                            <Switch
-                                value={value}
-                                onValueChange={onChange}
-                                trackColor={{ false: "#767577", true: "#0a7ea4" }}
-                            />
-                        )}
-                        name="hasRestrictedAreaAccess"
-                    />
-                </View>
-
                 <View style={styles.footer}>
                     {isSubmitting ? (
                         <ActivityIndicator size="large" color="#0a7ea4" />
@@ -145,14 +129,5 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         fontSize: 16,
     },
-    switchContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginVertical: 25,
-        padding: 15,
-        backgroundColor: '#f0f0f0',
-        borderRadius: 8
-    },
-    footer: { marginTop: 20, marginBottom: 50 }
+    footer: { marginTop: 40, marginBottom: 50 }
 });

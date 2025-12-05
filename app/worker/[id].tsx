@@ -57,19 +57,7 @@ export default function WorkerDetailScreen() {
         } catch (e) { showMessage("Error", "No se pudo cambiar el estado"); }
     };
 
-    const toggleAccess = async () => {
-        if (!worker) return;
-        try {
-            if (worker.hasRestrictedAreaAccess) {
-                await WorkerService.revokeAccess(worker.id);
-                showMessage("Éxito", "Acceso revocado");
-            } else {
-                await WorkerService.grantAccess(worker.id);
-                showMessage("Éxito", "Acceso concedido");
-            }
-            fetchWorker();
-        } catch (e) { showMessage("Error", "No se pudo cambiar el permiso"); }
-    };
+    // Se eliminó la función toggleAccess
 
     const handleOpenAssignModal = async () => {
         setRfidModalVisible(true);
@@ -182,23 +170,7 @@ export default function WorkerDetailScreen() {
                             </ThemedText>
                         </TouchableOpacity>
                     </View>
-
-                    <View style={[styles.cardRow, styles.cardRowBorder]}>
-                        <View>
-                            <ThemedText style={styles.cardLabel}>Área Restringida</ThemedText>
-                            <ThemedText style={styles.cardValue}>
-                                {worker.hasRestrictedAreaAccess ? '✅ Acceso Permitido' : '🚫 Sin Acceso'}
-                            </ThemedText>
-                        </View>
-                        <TouchableOpacity
-                            style={[styles.actionButton, worker.hasRestrictedAreaAccess ? styles.dangerButton : styles.primaryButton]}
-                            onPress={toggleAccess}
-                        >
-                            <ThemedText style={styles.actionButtonText}>
-                                {worker.hasRestrictedAreaAccess ? 'Revocar' : 'Conceder'}
-                            </ThemedText>
-                        </TouchableOpacity>
-                    </View>
+                    {/* Se eliminó la fila de control de Área Restringida */}
                 </View>
 
                 <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -355,6 +327,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 8,
     },
+    // styles.cardRowBorder se mantiene por si se usa en otro lado, pero no se aplica ya
     cardRowBorder: {
         borderTopWidth: 1,
         borderTopColor: '#3a3a3a',
