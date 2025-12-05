@@ -7,7 +7,7 @@ import { ReportService } from '@/src/api/reportService';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, TouchableOpacity, View, ScrollView } from 'react-native';
 
-type ReportType = 'ATTENDANCE' | 'ACCESS' | 'SECURITY';
+type ReportType = 'ATTENDANCE' | 'ACCESS' | 'ALERTS';
 type SortOrder = 'ASC' | 'DESC';
 
 export default function ReportsScreen() {
@@ -16,9 +16,8 @@ export default function ReportsScreen() {
     const [data, setData] = useState<any[]>([]);
 
     const [sort, setSort] = useState<SortOrder>('DESC');
-    const [accessFilter, setAccessFilter] = useState<string>('ALL');
-    const [securityFilter, setSecurityFilter] = useState<string>('ALL');
     const [attendanceFilter, setAttendanceFilter] = useState<string>('ALL');
+    const [accessFilter, setAccessFilter] = useState<string>('ALL');
 
     const colorScheme = useColorScheme();
     const colors = Colors[colorScheme ?? 'dark'];
@@ -48,11 +47,12 @@ export default function ReportsScreen() {
                 const res = await ReportService.getAttendanceHistory(startDateStr, endDateStr, attendanceFilter, sort);
                 setData(res);
             } else if (type === 'ACCESS') {
+                // Pestaña Accesos: Muestra Todo o filtra por usuario
                 const res = await ReportService.getRecentAccessLogs(startIso, endIso, accessFilter, sort);
                 setData(res);
             } else {
-                // SECURITY: Usamos securityFilter que ahora mapea a severity (ACCESS/ATTENDANCE)
-                const res = await ReportService.getSecurityLogs(startIso, endIso, securityFilter, sort);
+                // Pestaña ALERTAS: Reutiliza el servicio de accesos pero fuerza status='DENIED'
+                const res = await ReportService.getRecentAccessLogs(startIso, endIso, 'DENIED', sort);
                 setData(res);
             }
         } catch (e) {
@@ -62,7 +62,7 @@ export default function ReportsScreen() {
         }
     };
 
-    useEffect(() => { fetchData(); }, [type, sort, accessFilter, securityFilter, attendanceFilter]);
+    useEffect(() => { fetchData(); }, [type, sort, accessFilter, attendanceFilter]);
 
     const formatTime = (isoString: string) => {
         if (!isoString) return '';
@@ -103,13 +103,7 @@ export default function ReportsScreen() {
                         <FilterChip label="Denegados" active={accessFilter === 'DENIED'} onPress={() => setAccessFilter('DENIED')} />
                     </>
                 )}
-                {type === 'SECURITY' && (
-                    <>
-                        <FilterChip label="Todas" active={securityFilter === 'ALL'} onPress={() => setSecurityFilter('ALL')} />
-                        <FilterChip label="Acceso" active={securityFilter === 'ACCESS'} onPress={() => setSecurityFilter('ACCESS')} />
-                        <FilterChip label="Asistencia" active={securityFilter === 'ATTENDANCE'} onPress={() => setSecurityFilter('ATTENDANCE')} />
-                    </>
-                )}
+                {/* En ALERTAS no hay filtros, solo se muestran las denegadas */}
             </ScrollView>
 
             <View style={styles.sortRow}>
@@ -146,59 +140,51 @@ export default function ReportsScreen() {
                     </View>
                 </View>
             );
-        } else if (type === 'ACCESS') {
-            const isGranted = item.status === 'GRANTED';
-            return (
-                <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                    <View style={styles.cardHeader}>
-                        <View style={[styles.cardIcon, { backgroundColor: isGranted ? '#22c55e' : '#ef4444' }]}>
-                            <IconSymbol name={isGranted ? 'plus.circle.fill' : 'trash.fill'} size={20} color="white" />
-                        </View>
-                        <View style={styles.cardHeaderText}>
-                            <ThemedText style={styles.cardTitle}>{item.workerFullName || 'Desconocido'}</ThemedText>
-                            <ThemedText style={styles.cardSub}>ID Huella: {item.fingerprintId}</ThemedText>
-                        </View>
-                        <ThemedText style={styles.timeText}>{formatTime(item.accessTime)}</ThemedText>
-                    </View>
-                    <View style={styles.footerRow}>
-                        <ThemedText style={{fontSize: 12, color: '#888'}}>#{itemNumber}</ThemedText>
-                        <View style={[styles.statusBadge, isGranted ? styles.grantedBadge : styles.deniedBadge]}>
-                            <ThemedText style={styles.statusBadgeText}>{isGranted ? 'ACCESO PERMITIDO' : 'ACCESO DENEGADO'}</ThemedText>
-                        </View>
-                    </View>
-                </View>
-            );
-        } else {
-            // SECURITY - Ahora leemos severity que trae "ACCESS" o "ATTENDANCE"
-            const isAccess = item.severity === 'ACCESS';
-            return (
-                <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, borderLeftWidth: 4, borderLeftColor: isAccess ? '#ef4444' : '#f59e0b' }]}>
-                    <View style={styles.cardHeader}>
-                        <View style={styles.cardHeaderText}>
-                            <ThemedText style={styles.cardType}>{item.eventType}</ThemedText>
-                            <ThemedText style={styles.cardTitle}>{item.description}</ThemedText>
-                        </View>
-                        <ThemedText style={styles.timeText}>{formatTime(item.eventTime)}</ThemedText>
-                    </View>
-                    <View style={styles.footerRow}>
-                        <ThemedText style={{fontSize: 12, color: '#888'}}>#{itemNumber}</ThemedText>
-                        <View style={[styles.statusBadge, {backgroundColor: isAccess ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)'}]}>
-                            <ThemedText style={[styles.statusBadgeText, {color: isAccess ? '#ef4444' : '#f59e0b'}]}>
-                                {item.severity === 'ACCESS' ? '🚨 ALERTA DE ACCESO' : '⚠ ALERTA DE ASISTENCIA'}
-                            </ThemedText>
-                        </View>
-                    </View>
-                </View>
-            );
         }
+
+        const isGranted = item.status === 'GRANTED';
+        const isAlertTab = type === 'ALERTS';
+
+        const cardBorderColor = isAlertTab ? '#ef4444' : colors.border;
+        const iconColor = isGranted ? '#22c55e' : '#ef4444';
+
+        return (
+            <View style={[styles.card, {
+                backgroundColor: colors.card,
+                borderColor: cardBorderColor,
+                borderLeftWidth: isAlertTab ? 4 : 1,
+                borderLeftColor: isAlertTab ? '#ef4444' : colors.border
+            }]}>
+                <View style={styles.cardHeader}>
+                    <View style={[styles.cardIcon, { backgroundColor: iconColor }]}>
+                        <IconSymbol name={isGranted ? 'plus.circle.fill' : 'exclamationmark.triangle.fill'} size={20} color="white" />
+                    </View>
+                    <View style={styles.cardHeaderText}>
+                        <ThemedText style={styles.cardTitle}>{item.workerFullName || 'Desconocido'}</ThemedText>
+                        <ThemedText style={styles.cardSub}>ID Huella: {item.fingerprintId || 'N/A'}</ThemedText>
+                    </View>
+                    <ThemedText style={styles.timeText}>{formatTime(item.accessTime)}</ThemedText>
+                </View>
+                <View style={styles.footerRow}>
+                    <ThemedText style={{fontSize: 12, color: '#888'}}>#{itemNumber}</ThemedText>
+                    <View style={[styles.statusBadge, isGranted ? styles.grantedBadge : styles.deniedBadge]}>
+                        <ThemedText style={[styles.statusBadgeText, { color: isAlertTab ? '#ef4444' : colors.text }]}>
+                            {isGranted ? 'ACCESO PERMITIDO' : 'ACCESO DENEGADO (ALERTA)'}
+                        </ThemedText>
+                    </View>
+                </View>
+            </View>
+        );
     };
 
     return (
         <ThemedView style={styles.container}>
             <View style={[styles.tabs, { backgroundColor: colors.card }]}>
-                {(['ATTENDANCE', 'ACCESS', 'SECURITY'] as ReportType[]).map((t) => (
+                {(['ATTENDANCE', 'ACCESS', 'ALERTS'] as ReportType[]).map((t) => (
                     <TouchableOpacity key={t} style={[styles.tab, type === t && styles.activeTab]} onPress={() => { setType(t); }}>
-                        <ThemedText style={[styles.tabText, type === t && styles.activeTabText]}>{t === 'ATTENDANCE' ? 'Asistencia' : t === 'ACCESS' ? 'Accesos' : 'Alertas'}</ThemedText>
+                        <ThemedText style={[styles.tabText, type === t && styles.activeTabText]}>
+                            {t === 'ATTENDANCE' ? 'Asistencia' : t === 'ACCESS' ? 'Accesos' : 'Alertas'}
+                        </ThemedText>
                     </TouchableOpacity>
                 ))}
             </View>
