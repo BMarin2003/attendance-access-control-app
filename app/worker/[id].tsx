@@ -45,19 +45,7 @@ export default function WorkerDetailScreen() {
 
     useEffect(() => { if (id) fetchWorker(); }, [id]);
 
-    const toggleStatus = async () => {
-        if (!worker) return;
-        try {
-            if (worker.status === 'ACTIVE') {
-                await WorkerService.deactivate(worker.id);
-            } else {
-                await WorkerService.activate(worker.id);
-            }
-            fetchWorker();
-        } catch (e) { showMessage("Error", "No se pudo cambiar el estado"); }
-    };
-
-    // Se eliminó la función toggleAccess
+    // SE ELIMINÓ toggleStatus y toggleAccess
 
     const handleOpenAssignModal = async () => {
         setRfidModalVisible(true);
@@ -150,29 +138,6 @@ export default function WorkerDetailScreen() {
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 <ThemedText type="title" style={styles.workerName}>{worker.fullName}</ThemedText>
-
-                <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                    <View style={styles.cardRow}>
-                        <View>
-                            <ThemedText style={styles.cardLabel}>Estado</ThemedText>
-                            <View style={[styles.statusBadge, worker.status === 'ACTIVE' ? styles.activeBadge : styles.inactiveBadge]}>
-                                <ThemedText style={styles.statusText}>
-                                    {worker.status === 'ACTIVE' ? 'Activo' : 'Inactivo'}
-                                </ThemedText>
-                            </View>
-                        </View>
-                        <TouchableOpacity
-                            style={[styles.actionButton, worker.status === 'ACTIVE' ? styles.warningButton : styles.successButton]}
-                            onPress={toggleStatus}
-                        >
-                            <ThemedText style={styles.actionButtonText}>
-                                {worker.status === 'ACTIVE' ? 'Desactivar' : 'Activar'}
-                            </ThemedText>
-                        </TouchableOpacity>
-                    </View>
-                    {/* Se eliminó la fila de control de Área Restringida */}
-                </View>
-
                 <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
                     <ThemedText style={styles.sectionTitle}>Información Personal</ThemedText>
                     <View style={styles.infoRow}>
@@ -225,6 +190,7 @@ export default function WorkerDetailScreen() {
                 </TouchableOpacity>
             </ScrollView>
 
+            {/* Modales se mantienen igual */}
             <Modal visible={rfidModalVisible} animationType="slide" transparent={true}>
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modalView, { backgroundColor: colors.card }]}>
@@ -327,7 +293,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 8,
     },
-    // styles.cardRowBorder se mantiene por si se usa en otro lado, pero no se aplica ya
     cardRowBorder: {
         borderTopWidth: 1,
         borderTopColor: '#3a3a3a',
@@ -358,27 +323,12 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '600',
     },
-    actionButton: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 8,
-    },
+    // Estilos de botones de acción eliminados ya que no se usan
     primaryButton: {
         backgroundColor: '#0a7ea4',
     },
-    successButton: {
-        backgroundColor: '#22c55e',
-    },
-    warningButton: {
-        backgroundColor: '#f97316',
-    },
     dangerButton: {
         backgroundColor: '#ef4444',
-    },
-    actionButtonText: {
-        color: 'white',
-        fontWeight: '600',
-        fontSize: 13,
     },
     sectionTitle: {
         fontSize: 16,

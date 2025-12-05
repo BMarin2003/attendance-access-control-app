@@ -4,7 +4,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ReportService } from '@/src/api/reportService';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, TouchableOpacity, View, ScrollView } from 'react-native';
 
 type ReportType = 'ATTENDANCE' | 'ACCESS' | 'ALERTS';
@@ -47,11 +47,9 @@ export default function ReportsScreen() {
                 const res = await ReportService.getAttendanceHistory(startDateStr, endDateStr, attendanceFilter, sort);
                 setData(res);
             } else if (type === 'ACCESS') {
-                // Pestaña Accesos: Muestra Todo o filtra por usuario
                 const res = await ReportService.getRecentAccessLogs(startIso, endIso, accessFilter, sort);
                 setData(res);
             } else {
-                // Pestaña ALERTAS: Reutiliza el servicio de accesos pero fuerza status='DENIED'
                 const res = await ReportService.getRecentAccessLogs(startIso, endIso, 'DENIED', sort);
                 setData(res);
             }
@@ -64,8 +62,45 @@ export default function ReportsScreen() {
 
     useEffect(() => { fetchData(); }, [type, sort, accessFilter, attendanceFilter]);
 
+    // --- TRANSFORMACIÓN DE DATOS PARA ASISTENCIA ---
+    // Desdoblamos las sesiones en eventos individuales (Entrada y Salida)
+    const processedList = useMemo(() => {
+        if (type !== 'ATTENDANCE') return data;
+
+        const events: any[] = [];
+        data.forEach(item => {
+            // 1. Agregar Evento de ENTRADA (Siempre existe)
+            events.push({
+                ...item,
+                virtualId: `${item.id}-IN`, // ID único virtual
+                eventType: 'ENTRADA',
+                displayTime: item.checkInTime,
+                originalStatus: item.status
+            });
+
+            // 2. Agregar Evento de SALIDA (Solo si ya marcó salida)
+            if (item.checkOutTime) {
+                events.push({
+                    ...item,
+                    virtualId: `${item.id}-OUT`, // ID único virtual
+                    eventType: 'SALIDA',
+                    displayTime: item.checkOutTime,
+                    originalStatus: item.status
+                });
+            }
+        });
+
+        // Reordenar la lista combinada por hora del evento
+        return events.sort((a, b) => {
+            const timeA = new Date(a.displayTime).getTime();
+            const timeB = new Date(b.displayTime).getTime();
+            return sort === 'DESC' ? timeB - timeA : timeA - timeB;
+        });
+
+    }, [data, type, sort]);
+
     const formatTime = (isoString: string) => {
-        if (!isoString) return '';
+        if (!isoString) return '--:--';
         const date = new Date(isoString);
         return date.toLocaleString('es-PE', {
             day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
@@ -103,7 +138,6 @@ export default function ReportsScreen() {
                         <FilterChip label="Denegados" active={accessFilter === 'DENIED'} onPress={() => setAccessFilter('DENIED')} />
                     </>
                 )}
-                {/* En ALERTAS no hay filtros, solo se muestran las denegadas */}
             </ScrollView>
 
             <View style={styles.sortRow}>
@@ -117,34 +151,54 @@ export default function ReportsScreen() {
     );
 
     const renderItem = ({ item, index }: { item: any, index: number }) => {
-        const itemNumber = sort === 'DESC' ? data.length - index : index + 1;
+        // Calculamos el número de item basado en la lista procesada
+        const listToUse = type === 'ATTENDANCE' ? processedList : data;
+        const itemNumber = sort === 'DESC' ? listToUse.length - index : index + 1;
 
         if (type === 'ATTENDANCE') {
+            const isExit = item.eventType === 'SALIDA';
+
             return (
                 <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
                     <View style={styles.cardHeader}>
-                        <View style={[styles.cardIcon, { backgroundColor: '#0a7ea4' }]}>
-                            <ThemedText style={styles.cardIconText}>A</ThemedText>
+                        {/* Icono: Entrada (Azul/Flecha) vs Salida (Morado/Cuadro) */}
+                        <View style={[styles.cardIcon, { backgroundColor: isExit ? '#8b5cf6' : '#0a7ea4' }]}>
+                            <IconSymbol name={isExit ? 'arrow.right.square.fill' : 'arrow.right.to.line'} size={20} color="white" />
                         </View>
                         <View style={styles.cardHeaderText}>
                             <ThemedText style={styles.cardTitle}>{item.workerFullName}</ThemedText>
                             <ThemedText style={styles.cardSub}>{item.rfidTag || 'Sin Tag'}</ThemedText>
                         </View>
-                        <ThemedText style={styles.timeText}>{formatTime(item.checkInTime)}</ThemedText>
+                        {/* Hora específica del evento (entrada o salida) */}
+                        <ThemedText style={styles.timeText}>{formatTime(item.displayTime)}</ThemedText>
                     </View>
+
                     <View style={styles.footerRow}>
                         <ThemedText style={{fontSize: 12, color: '#888'}}>#{itemNumber}</ThemedText>
-                        <View style={[styles.statusBadge, item.isLate ? styles.lateBadge : styles.onTimeBadge]}>
-                            <ThemedText style={styles.statusBadgeText}>{item.isLate ? `⏱ Tardanza (${item.latenessDuration})` : '✓ Puntual'}</ThemedText>
+
+                        <View style={{flexDirection: 'row', gap: 6}}>
+                            {/* Etiqueta de Tipo */}
+                            <View style={[styles.statusBadge, { backgroundColor: isExit ? 'rgba(139, 92, 246, 0.15)' : 'rgba(10, 126, 164, 0.15)' }]}>
+                                <ThemedText style={[styles.statusBadgeText, { color: isExit ? '#8b5cf6' : '#0a7ea4' }]}>
+                                    {item.eventType}
+                                </ThemedText>
+                            </View>
+
+                            {/* Etiqueta de Puntualidad (Solo relevante en la entrada, pero mostramos en ambos para contexto) */}
+                            <View style={[styles.statusBadge, item.isLate ? styles.lateBadge : styles.onTimeBadge]}>
+                                <ThemedText style={styles.statusBadgeText}>
+                                    {item.isLate ? `⏱ Tardanza (${item.latenessDuration || '0m'})` : '✓ Puntual'}
+                                </ThemedText>
+                            </View>
                         </View>
                     </View>
                 </View>
             );
         }
 
+        // --- LOGICA ACCESS Y ALERTS ---
         const isGranted = item.status === 'GRANTED';
         const isAlertTab = type === 'ALERTS';
-
         const cardBorderColor = isAlertTab ? '#ef4444' : colors.border;
         const iconColor = isGranted ? '#22c55e' : '#ef4444';
 
@@ -189,8 +243,25 @@ export default function ReportsScreen() {
                 ))}
             </View>
             {renderHeaderControls()}
-            <View style={styles.countContainer}><ThemedText style={styles.countText}>Registros encontrados: {data.length}</ThemedText></View>
-            {loading ? <ActivityIndicator style={styles.loader} size="large" color="#0a7ea4" /> : <FlatList data={data} keyExtractor={(item) => item.id.toString()} renderItem={renderItem} contentContainerStyle={styles.listContent} refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchData} tintColor={colors.text} />} showsVerticalScrollIndicator={false} ListEmptyComponent={<View style={styles.emptyContainer}><ThemedText style={styles.emptyText}>No hay registros.</ThemedText></View>} />}
+
+            {/* Contador basado en la lista visual procesada */}
+            <View style={styles.countContainer}>
+                <ThemedText style={styles.countText}>
+                    Registros encontrados: {type === 'ATTENDANCE' ? processedList.length : data.length}
+                </ThemedText>
+            </View>
+
+            {loading ? <ActivityIndicator style={styles.loader} size="large" color="#0a7ea4" /> :
+                <FlatList
+                    data={type === 'ATTENDANCE' ? processedList : data}
+                    // Usamos virtualId para asistencia (para que no se repita key) y id normal para otros
+                    keyExtractor={(item) => type === 'ATTENDANCE' ? item.virtualId : item.id.toString()}
+                    renderItem={renderItem}
+                    contentContainerStyle={styles.listContent}
+                    refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchData} tintColor={colors.text} />}
+                    showsVerticalScrollIndicator={false}
+                    ListEmptyComponent={<View style={styles.emptyContainer}><ThemedText style={styles.emptyText}>No hay registros.</ThemedText></View>}
+                />}
         </ThemedView>
     );
 }

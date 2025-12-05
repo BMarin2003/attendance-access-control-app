@@ -1,5 +1,4 @@
 export interface SystemConfig {
-    simulatedDateTime: string;
     id: number;
     workStartTime: string;
     workEndTime: string;
@@ -7,11 +6,13 @@ export interface SystemConfig {
     maxFailedAccessAttempts: number;
     alertCooldownMinutes: number;
     simulationMode: boolean;
+    simulatedDateTime?: string;
 }
 
-export interface UpdateConfigRequest {
+export interface UpdateSystemConfig {
     workStartTime?: string;
     workEndTime?: string;
     lateThresholdMinutes?: number;
     maxFailedAccessAttempts?: number;
+    simulationMode?: boolean;
 }
