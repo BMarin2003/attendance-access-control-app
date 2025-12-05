@@ -3,9 +3,9 @@ export interface AccessLog {
     workerId?: number;
     workerFullName?: string;
     fingerprintId?: number;
-    status: 'GRANTED' | 'DENIED' | 'UNAUTHORIZED' | 'FINGERPRINT_NOT_RECOGNIZED';
+    accessGranted: boolean;
+    status: string;
     location?: string;
-    denialReason?: string;
     accessTime: string;
 }
 
@@ -15,6 +15,6 @@ export interface SecurityLog {
     description: string;
     fingerprintAttempt?: string;
     attemptCount?: number;
-    severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+    severity: string;
     eventTime: string;
 }
